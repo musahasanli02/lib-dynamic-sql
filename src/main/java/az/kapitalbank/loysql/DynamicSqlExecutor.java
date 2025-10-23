@@ -102,6 +102,25 @@ public class DynamicSqlExecutor {
     }
 
     /**
+     * Execute query without expecting a return value
+     * Useful for DML operations (INSERT, UPDATE, DELETE) or procedures that don't return data
+     *
+     * @param queryName The query identifier
+     * @param params Query parameters
+     */
+    public void execute(String queryName, Map<String, Object> params) {
+        String jsonPayload = createJsonPayload(queryName, params);
+
+        logQueryIfEnabled(queryName, params, jsonPayload);
+
+        SimpleJdbcCall jdbcCall = createJdbcCall();
+        SqlParameterSource parameterSource = new MapSqlParameterSource()
+                .addValue("P_JSON", jsonPayload);
+
+        jdbcCall.execute(parameterSource);
+    }
+
+    /**
      * Create the JSON payload for the stored procedure
      */
     private String createJsonPayload(String queryName, Map<String, Object> params) {
@@ -204,7 +223,7 @@ public class DynamicSqlExecutor {
          * Execute without expecting a result (for procedures that don't return data)
          */
         public void execute() {
-            executor.executeForObject(queryName, Void.class, params);
+            executor.execute(queryName, params);
         }
     }
 }
