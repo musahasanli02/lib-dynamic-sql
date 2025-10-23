@@ -38,6 +38,14 @@ public class LibConfigProperties {
     private String defaultSchema;
 
     /**
+     * Default catalog name for Oracle functions.
+     * If specified, all function calls will use this catalog unless must be overridden.
+     * Example: "LOYALTY_CATALOG"
+     * Default: null (uses default catalog from database connection)
+     */
+    private String defaultCatalog;
+
+    /**
      * Name of the default stored procedure which accepts query name and params and executes related sql.
      * Example: "DYNAMIC_SQL_EXECUTOR"
      * Default: "EXECUTE_DYNAMIC_SQL"
@@ -68,6 +76,14 @@ public class LibConfigProperties {
 
     public void setDefaultSchema(String defaultSchema) {
         this.defaultSchema = defaultSchema;
+    }
+
+    public String getDefaultCatalog() {
+        return defaultCatalog;
+    }
+
+    public void setDefaultCatalog(String defaultCatalog) {
+        this.defaultCatalog = defaultCatalog;
     }
 
     public String getProcedureName() {

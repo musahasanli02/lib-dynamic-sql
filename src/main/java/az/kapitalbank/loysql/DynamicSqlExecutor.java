@@ -16,11 +16,11 @@ import java.util.Map;
 
 /**
  * Centralized executor for Oracle database stored procedure that accepts JSON.
- *
+ * <p>
  * The executor calls a single central procedure with a JSON payload containing:
  * - queryName: The SQL query identifier
  * - params: The parameters for the query
- *
+ * <p>
  * Example usage:
  * <pre>
  * List&lt;UserDto&gt; users = executor.query("GET_USERS_LIST")
@@ -61,6 +61,17 @@ public class DynamicSqlExecutor {
     }
 
     /**
+     * Start building a query execution with custom catalog
+     *
+     * @param queryName The query identifier (e.g., "GET_USERS_LIST")
+     * @param catalogName The catalog name to use for this query
+     * @return QueryBuilder for fluent API
+     */
+    public QueryBuilder query(String queryName, String catalogName) {
+        return new QueryBuilder(queryName, catalogName, this);
+    }
+
+    /**
      * Execute query with parameters and return list of results
      *
      * @param queryName The query identifier
@@ -82,6 +93,35 @@ public class DynamicSqlExecutor {
     }
 
     /**
+     * Execute query with parameters and return list of results
+     *
+     * @param queryName The query identifier
+     * @param resultClass Expected result class
+     * @param params Query parameters
+     * @param catalogName name of the catalog
+     * @return List of result objects
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> executeForList(
+            String queryName,
+            Class<T> resultClass,
+            Map<String, Object> params,
+            String catalogName
+    ) {
+        String jsonPayload = createJsonPayload(queryName, params);
+
+        logQueryIfEnabled(queryName, params, jsonPayload);
+
+        SimpleJdbcCall jdbcCall = createJdbcCall();
+        SqlParameterSource parameterSource = new MapSqlParameterSource()
+                .addValue("P_JSON", jsonPayload);
+
+        return (List<T>) jdbcCall
+                .withCatalogName(catalogName)
+                .executeFunction(resultClass, parameterSource);
+    }
+
+    /**
      * Execute query and return single result
      *
      * @param queryName The query identifier
@@ -98,7 +138,32 @@ public class DynamicSqlExecutor {
         SqlParameterSource parameterSource = new MapSqlParameterSource()
                 .addValue("P_JSON", jsonPayload);
 
-        return jdbcCall.executeFunction(resultClass, parameterSource);
+        return jdbcCall
+                .withCatalogName(configProperties.getDefaultCatalog())
+                .executeFunction(resultClass, parameterSource);
+    }
+
+    /**
+     * Execute query in custom catalog and return single result
+     *
+     * @param queryName The query identifier
+     * @param resultClass Expected result class
+     * @param params Query parameters
+     * @param catalogName name of the catalog
+     * @return Single result object
+     */
+    public <T> T executeForObject(String queryName, Class<T> resultClass, Map<String, Object> params, String catalogName) {
+        String jsonPayload = createJsonPayload(queryName, params);
+
+        logQueryIfEnabled(queryName, params, jsonPayload);
+
+        SimpleJdbcCall jdbcCall = createJdbcCall();
+        SqlParameterSource parameterSource = new MapSqlParameterSource()
+                .addValue("P_JSON", jsonPayload);
+
+        return jdbcCall
+                .withCatalogName(catalogName)
+                .executeFunction(resultClass, parameterSource);
     }
 
     /**
@@ -148,11 +213,31 @@ public class DynamicSqlExecutor {
         private final String queryName;
         private final DynamicSqlExecutor executor;
         private final Map<String, Object> params;
+        private String catalogName;
 
         private QueryBuilder(String queryName, DynamicSqlExecutor executor) {
             this.queryName = queryName;
             this.executor = executor;
             this.params = new HashMap<>();
+            this.catalogName = executor.configProperties.getDefaultCatalog();
+        }
+
+        private QueryBuilder(String queryName, String catalogName, DynamicSqlExecutor executor) {
+            this.queryName = queryName;
+            this.executor = executor;
+            this.params = new HashMap<>();
+            this.catalogName = catalogName;
+        }
+
+        /**
+         * Override catalog name for this query
+         *
+         * @param catalogName Parameter name
+         * @return This builder for chaining
+         */
+        public QueryBuilder catalog(String catalogName) {
+            this.catalogName = catalogName;
+            return this;
         }
 
         /**
@@ -187,7 +272,7 @@ public class DynamicSqlExecutor {
          * @return List of result objects
          */
         public <T> List<T> executeForList(Class<T> resultClass) {
-            return executor.executeForList(queryName, resultClass, params);
+            return executor.executeForList(queryName, resultClass, params, catalogName);
         }
 
         /**
@@ -197,14 +282,14 @@ public class DynamicSqlExecutor {
          * @return Single result object
          */
         public <T> T executeForObject(Class<T> resultClass) {
-            return executor.executeForObject(queryName, resultClass, params);
+            return executor.executeForObject(queryName, resultClass, params, catalogName);
         }
 
         /**
          * Execute without expecting a result (for procedures that don't return data)
          */
         public void execute() {
-            executor.executeForObject(queryName, Void.class, params);
+            executor.executeForObject(queryName, Void.class, params, catalogName);
         }
     }
 }

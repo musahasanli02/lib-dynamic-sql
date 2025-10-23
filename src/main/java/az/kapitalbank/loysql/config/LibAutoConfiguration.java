@@ -10,7 +10,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.simple.SimpleJdbcCall;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
@@ -69,12 +68,6 @@ public class LibAutoConfiguration {
 
         log.info("Oracle Function Executor initialized successfully");
         return executor;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public DataSource dataSource() {
-        return new DriverManagerDataSource();
     }
 
 }
