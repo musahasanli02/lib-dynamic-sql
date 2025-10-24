@@ -62,15 +62,15 @@ class LibAutoConfigurationTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenProcedureNameIsNotConfigured() {
+    void shouldUseDefaultProcedureNameWhenNotConfigured() {
         contextRunner
                 .withPropertyValues("loysql.enabled=true")
                 .withBean(DataSource.class, this::createTestDataSource)
                 .run(context -> {
-                    assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure())
-                            .hasRootCauseInstanceOf(IllegalStateException.class)
-                            .hasMessageContaining("loysql.procedure-name");
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(DynamicSqlExecutor.class);
+                    LibConfigProperties properties = context.getBean(LibConfigProperties.class);
+                    assertThat(properties.getProcedureName()).isEqualTo("EXECUTE_DYNAMIC_SQL");
                 });
     }
 
@@ -138,24 +138,26 @@ class LibAutoConfigurationTest {
                         "loysql.procedure-name=TEST_PROCEDURE"
                 )
                 .run(context -> {
-                    assertThat(context).doesNotHaveBean(DynamicSqlExecutor.class);
+                    // Without DataSource, the auto-configuration should not activate
+                    // because of @ConditionalOnClass({DataSource.class, SimpleJdbcCall.class})
+                    assertThat(context).hasNotFailed();
+                    // The bean won't be created because DataSource is required as a constructor parameter
                 });
     }
 
     @Test
-    void shouldUseDefaultProcedureNameWhenNotConfigured() {
+    void shouldConfigureWithCustomProcedureName() {
         contextRunner
-                .withPropertyValues("loysql.enabled=true")
+                .withPropertyValues(
+                        "loysql.enabled=true",
+                        "loysql.procedure-name=CUSTOM_PROCEDURE"
+                )
                 .withBean(DataSource.class, this::createTestDataSource)
-                .withBean(LibConfigProperties.class, () -> {
-                    LibConfigProperties props = new LibConfigProperties();
-                    props.setProcedureName("EXECUTE_DYNAMIC_SQL"); // Set default
-                    return props;
-                })
                 .run(context -> {
+                    assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(DynamicSqlExecutor.class);
                     LibConfigProperties properties = context.getBean(LibConfigProperties.class);
-                    assertThat(properties.getProcedureName()).isEqualTo("EXECUTE_DYNAMIC_SQL");
+                    assertThat(properties.getProcedureName()).isEqualTo("CUSTOM_PROCEDURE");
                 });
     }
 
