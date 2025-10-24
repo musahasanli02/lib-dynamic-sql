@@ -32,22 +32,17 @@ class DynamicSqlExecutorTest {
     @Mock
     private DataSource dataSource;
 
-    @Mock
-    private Connection connection;
-
     private LibConfigProperties configProperties;
     private DynamicSqlExecutor executor;
     private ObjectMapper objectMapper;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         configProperties = new LibConfigProperties();
         configProperties.setProcedureName("TEST_PROCEDURE");
         configProperties.setDefaultSchema("TEST_SCHEMA");
         configProperties.setDefaultCatalog("TEST_CATALOG");
         configProperties.setLogQueries(false);
-
-        when(dataSource.getConnection()).thenReturn(connection);
 
         executor = new DynamicSqlExecutor(dataSource, configProperties);
         objectMapper = new ObjectMapper();
